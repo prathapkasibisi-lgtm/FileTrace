@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel viewer">
+  <p class="eyebrow">FILE RECEIPT / TRACKING QR</p>
+  <h1>You've scanned a FileTrace QR code</h1>
+  <p class="muted">Tracking ID: <code>{{ file.tracking_id }}</code></p>
+  <div class="notice">
+    <strong>Privacy notice</strong>
+    <p>This scan is recorded with its time and basic technical event details. You may optionally provide your name and allow your browser to share device location. Your coordinates are sent only if you choose Allow in the browser's location prompt. If you deny permission, the scan is still recorded without device coordinates.</p>
+  </div>
+  <form id="name-form" class="nameform">
+    <label for="visitor-name">Your name (optional)</label>
+    <input id="visitor-name" maxlength="120" placeholder="Enter your name">
+    <button type="submit" class="secondary">Submit name</button>
+  </form>
+  <p id="name-status" class="small muted">Name is optional and is not inferred automatically.</p>
+  <p id="location-status" class="status">Requesting device location permission from your browser…</p>
+</section>
+<script>
+(() => {
+  const token = {{ token | tojson }};
+  const status = document.getElementById("location-status");
+  const nameStatus = document.getElementById("name-status");
+  document.getElementById("name-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const name = document.getElementById("visitor-name").value.trim();
+    if (!name) { nameStatus.textContent = "Enter a name or leave this field blank."; return; }
+    try {
+      const r = await fetch(`/api/scan/${encodeURIComponent(token)}/name`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({name})
+      });
+      if (!r.ok) throw new Error();
+      nameStatus.textContent = "Thank you. Your name was submitted.";
+    } catch (_) { nameStatus.textContent = "Name could not be submitted. Please try again."; }
+  });
+
+  if (!("geolocation" in navigator)) {
+    status.textContent = "Device location is unsupported by this browser. The QR scan is still recorded.";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(async (position) => {
+    const body = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy_meters: position.coords.accuracy,
+      captured_at: new Date(position.timestamp).toISOString()
+    };
+    try {
+      const r = await fetch(`/api/scan/${encodeURIComponent(token)}/location`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error();
+      status.textContent = `Device-reported location saved (accuracy ±${Math.round(body.accuracy_meters)} m). This is supporting information, not proof of identity or physical presence.`;
+    } catch (_) {
+      status.textContent = "Location was not saved. The QR scan remains recorded.";
+    }
+  }, (error) => {
+    status.textContent = error.code === 1
+      ? "Location permission denied. No device coordinates were saved; the QR scan remains recorded."
+      : "Device location unavailable. No coordinates were saved; the QR scan remains recorded.";
+  }, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
+})();
+</script>
+{% endblock %}

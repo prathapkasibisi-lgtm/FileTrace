@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <a href="/">← Dashboard</a><p class="eyebrow">FILE EVENT HISTORY</p><h1>{{ file.original_name }}</h1>
+  <p class="muted">Tracking ID: <code>{{ file.tracking_id }}</code></p>
+  {% if events %}
+  <div class="table-wrap"><table><thead><tr><th>Time (UTC)</th><th>Event</th><th>Name</th><th>Device location</th><th>Browser</th></tr></thead><tbody>
+  {% for e in events %}<tr><td>{{ e.occurred_at }}</td><td>{{ e.event_type }}</td><td>{{ e.visitor_name or "Not provided" }}</td><td>
+    {% if e.latitude is not none %}{{ "%.5f"|format(e.latitude) }}, {{ "%.5f"|format(e.longitude) }}<br><small>Accuracy ±{{ "%.0f"|format(e.accuracy_meters) }} m · {{ e.source }}</small>
+    {% else %}<span class="muted">Not provided</span>{% endif %}
+  </td><td>{{ (e.user_agent or "Unknown")[:100] }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  {% else %}<p class="muted">No scan events yet.</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">DIRECT FILE DNA TRACKING</p>
+  <h1>Embed a tracking QR in your file.</h1>
+  <p class="muted">Upload once, download the processed file, then share that file directly through WhatsApp, Gmail or Telegram. A recipient can scan its QR code to voluntarily report receipt and optionally share device location.</p>
+</section>
+<section class="panel">
+  <h2>Upload original file</h2>
+  <form action="/upload" method="post" enctype="multipart/form-data" class="upload">
+    <input type="file" name="file" required>
+    <button>Upload and embed QR</button>
+  </form>
+  <small>PDF, DOCX and common images receive an embedded QR. Other formats retain the original file and receive a separate QR PNG. Maximum upload size: 25 MB.</small>
+</section>
+<section class="panel">
+  <h2>Tracked files</h2>
+  {% if files %}
+  <div class="table-wrap"><table><thead><tr><th>File</th><th>Tracking ID</th><th>SHA-256</th><th>QR scans</th><th>Locations</th><th>Actions</th></tr></thead><tbody>
+  {% for f in files %}
+  <tr><td>{{ f.original_name }}</td><td><code>{{ f.tracking_id }}</code></td><td><code>{{ f.sha256[:16] }}…</code></td>
+  <td>{{ f.event_count }}</td><td>{{ f.location_count }}</td><td class="actions">
+    <a class="button" href="/download/{{ f.tracking_id }}">Download processed file</a>
+    <a href="/qr/{{ f.tracking_id }}">Download QR PNG</a>
+    <a href="/files/{{ f.tracking_id }}/events">View events</a>
+  </td></tr>
+  {% endfor %}</tbody></table></div>
+  {% else %}<p class="muted">No files uploaded yet.</p>{% endif %}
+</section>
+<section class="panel">
+  <h2>Before sharing</h2>
+  <p>Current public tracking base URL: <code>{{ public_base_url }}</code></p>
+  <p class="muted">For recipients outside your computer, configure PUBLIC_BASE_URL to your deployed HTTPS address. A localhost QR code works only on the same computer.</p>
+</section>
+{% endblock %}

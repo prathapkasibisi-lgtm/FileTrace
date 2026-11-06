@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="viewer panel">
+  <p class="eyebrow">SHARED FILE</p><h1>{{ file.original_name }}</h1>
+  <p class="muted">The file owner uses this page to provide access to the shared file.</p>
+  <div class="notice">
+    <strong>Privacy notice</strong>
+    <p>When you open this viewer, an access event is recorded. This page will request your device location through your browser. Your coordinates are sent only if you choose Allow in the browser prompt. If you choose Block, access is still recorded and no device coordinates are saved.</p>
+  </div>
+  <p id="location-status" class="status">Checking whether this browser supports device location…</p>
+  <a class="button" href="/download/{{ token }}">Download shared file</a>
+  <p class="small muted">The download event means the file stream started; it does not prove that the download completed or that the file was opened.</p>
+</section>
+<script>
+(() => {
+  const status = document.getElementById("location-status");
+  if (!("geolocation" in navigator)) {
+    status.textContent = "Device location is not supported by this browser. Your access event has still been recorded.";
+    return;
+  }
+  status.textContent = "Your browser may show a location permission prompt. Your choice is respected.";
+  navigator.geolocation.getCurrentPosition(async (position) => {
+    const body = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy_meters: position.coords.accuracy,
+      captured_at: new Date(position.timestamp).toISOString()
+    };
+    try {
+      const response = await fetch("/api/view/{{ token }}/location", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) throw new Error("Could not save location");
+      status.textContent = `Device-reported location received (accuracy ±${Math.round(body.accuracy_meters)} m). This is supporting information, not proof of identity or physical presence.`;
+    } catch (_) {
+      status.textContent = "Your location was not saved. Your access event remains recorded.";
+    }
+  }, (error) => {
+    status.textContent = error.code === 1
+      ? "Location permission was denied. No device coordinates were saved; your access event remains recorded."
+      : "Device location is unavailable. No coordinates were saved; your access event remains recorded.";
+  }, {enableHighAccuracy: true, timeout: 12000, maximumAge: 0});
+})();
+</script>
+{% endblock %}
